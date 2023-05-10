@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 	"time"
 )
 
@@ -33,20 +32,12 @@ func main() {
 	if err != nil {
 		infoLog.Fatal(err)
 	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	fmt.Println(body, resp)
-	tgResp := TgResponse{}
-	if err := json.Unmarshal(body, &tgResp); err != nil {
-		infoLog.Fatal(err)
-	}
+	tgResp := statusAndDescription(resp)
 	if tgResp.Ok {
 		infoLog.Println("Webhook set")
 	} else {
-		infoLog.Println(body, "sf")
-		infoLog.Fatal("Webhook was not set", tgResp.Ok)
+		infoLog.Fatal("Webhook was not set: ", tgResp.Description)
 	}
-	infoLog.Println("webhook:", tgResp.Ok)
 
 	http.HandleFunc("/", handleEvent)
 	http.ListenAndServeTLS(fmt.Sprintf("%s:%s", HOST_ADRESS, HOST_PORT), CERT_PATH, CERT_KEY_PATH, nil)
@@ -58,12 +49,7 @@ func main() {
 	if err != nil {
 		infoLog.Println(err)
 	}
-	defer resp.Body.Close()
-	body, err = ioutil.ReadAll(resp.Body)
-	tgResp = TgResponse{}
-	if err := json.Unmarshal(body, &tgResp); err != nil {
-		infoLog.Fatal(err)
-	}
+	tgResp = statusAndDescription(resp)
 	if tgResp.Ok {
 		infoLog.Println("Webhook unset")
 	} else {
@@ -81,10 +67,37 @@ func handleEvent(w http.ResponseWriter, r *http.Request) {
 	var botText BotMessage
 	err = json.Unmarshal(text, &botText)
 	username := botText.Message.From.Username
+	firstName := botText.Message.From.FirstName
+	// lastName := botText.Message.From.LastName
 	chatUser := botText.Message.From.Id
 	chatGroup := botText.Message.Chat.Id
 	messageId := botText.Message.MessageId
-	botCommand := strings.Split(botText.Message.Text, "@")[0]
-	commandText := strings.Split(botText.Message.Text, " ")
-	log.Printf("%s %d %d %d %s %s", username, chatUser, chatGroup, messageId, botCommand, commandText)
+	botCommand := botText.Message.Text
+
+	log.Printf("%s %d %d %d %s", username, chatUser, chatGroup, messageId, botCommand)
+
+	responseParams := map[string]string{"chat_id": fmt.Sprintf("%v", chatUser)}
+
+	switch botCommand {
+	case "привет":
+		log.Println("чувак написал привет")
+
+		responseParams["text"] = "привет, " + firstName + "!"
+
+		resp, err := sendRequest(BOT_API, "sendMessage", responseParams)
+		if err != nil {
+			log.Println(resp)
+		}
+		log.Println(statusAndDescription(resp))
+
+	default:
+		log.Println("чувак написал несуществующую команду")
+
+		responseParams["text"] = "не понял..."
+		resp, err := sendRequest(BOT_API, "sendMessage", responseParams)
+		if err != nil {
+			log.Println(resp)
+		}
+		log.Println(statusAndDescription(resp))
+	}
 }

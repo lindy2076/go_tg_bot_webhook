@@ -5,18 +5,19 @@ package main
 // )
 
 type TgResponse struct {
-	Ok bool `json:"ok"`
+	Ok          bool   `json:"ok"`
+	Description string `json:"description"`
 }
 
 type BotMessage struct {
-	UpdateId int
+	UpdateId int `json:"update_id"`
 	Message  struct {
-		MessageId int
+		MessageId int `json:"message_id"`
 		From      struct {
 			Username  string
 			Id        int
-			FirstName string
-			LastName  string
+			FirstName string `json:"first_name"`
+			LastName  string `json:"last_name"`
 		}
 		Chat struct {
 			Id int

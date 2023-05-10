@@ -13,22 +13,7 @@ func setWebhook(botUrl string, host string, port string, certPath string) (*http
 
 	reqParams := map[string]string{"url": myaddr, "certificate": "@" + certPath}
 
-	contentType, body, err := createForm(reqParams)
-	if err != nil {
-		log.Println("error creating form in webhook")
-	}
-
-	addr, err := url.JoinPath(BOT_API, "setWebhook")
-	if err != nil {
-		log.Println("hmm", err)
-	}
-
-	resp, err := http.Post(addr, contentType, body)
-	if err != nil {
-		log.Println("hmm", err)
-	}
-
-	return resp, err
+	return sendCommonRequest(botUrl, "setWebhook", reqParams, true)
 }
 
 func deleteWebhook(botUrl string) (*http.Response, error) {
