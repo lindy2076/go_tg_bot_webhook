@@ -29,12 +29,13 @@ func main() {
 	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
 
 	// setting webhook
-	resp, err := setWebhook(BOT_API, HOST_ADRESS, HOST_PORT)
+	resp, err := setWebhook(BOT_API, HOST_ADRESS, HOST_PORT, CERT_PATH)
 	if err != nil {
 		infoLog.Fatal(err)
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
+	fmt.Println(body, resp)
 	tgResp := TgResponse{}
 	if err := json.Unmarshal(body, &tgResp); err != nil {
 		infoLog.Fatal(err)
@@ -42,7 +43,8 @@ func main() {
 	if tgResp.Ok {
 		infoLog.Println("Webhook set")
 	} else {
-		infoLog.Fatal("Webhook was not set")
+		infoLog.Println(body, "sf")
+		infoLog.Fatal("Webhook was not set", tgResp.Ok)
 	}
 	infoLog.Println("webhook:", tgResp.Ok)
 

@@ -7,21 +7,23 @@ import (
 	"net/url"
 )
 
-func setWebhook(botUrl string, host string, port string) (*http.Response, error) {
+func setWebhook(botUrl string, host string, port string, certPath string) (*http.Response, error) {
 	myaddr := "https://" + host + ":" + port
 	fmt.Println("host:", myaddr)
 
-	reqParams := url.Values{}
-	reqParams.Set("url", myaddr)
+	reqParams := map[string]string{"url": myaddr, "certificate": "@" + certPath}
+
+	contentType, body, err := createForm(reqParams)
+	if err != nil {
+		log.Println("error creating form in webhook")
+	}
 
 	addr, err := url.JoinPath(BOT_API, "setWebhook")
 	if err != nil {
 		log.Println("hmm", err)
 	}
 
-	query := addr + "?" + reqParams.Encode()
-
-	resp, err := http.Get(query)
+	resp, err := http.Post(addr, contentType, body)
 	if err != nil {
 		log.Println("hmm", err)
 	}
