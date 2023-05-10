@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -57,4 +58,68 @@ func statusAndDescription(resp *http.Response) TgResponse {
 		log.Fatal(err)
 	}
 	return tgResp
+}
+
+func replyWithParams(params map[string]string) *http.Response {
+	resp, err := sendRequest(BOT_API, "sendMessage", params)
+	if err != nil {
+		log.Println("replywithtext error")
+	}
+	return resp
+}
+
+func replyWithText(chatId int, text string) *http.Response {
+	responseParams := map[string]string{"chat_id": fmt.Sprintf("%v", chatId)}
+	responseParams["text"] = text
+	return replyWithParams(responseParams)
+}
+
+func replyWithReplyKeyboard(chatId int, text string, keyboard *ReplyKeyboard) *http.Response {
+	responseParams := map[string]string{"chat_id": fmt.Sprintf("%v", chatId)}
+	responseParams["text"] = text
+	keyboardJsoned, err := json.Marshal(keyboard)
+	responseParams["reply_markup"] = string(keyboardJsoned)
+	resp, err := sendRequest(BOT_API, "sendMessage", responseParams)
+	if err != nil {
+		log.Println("replywithreplykeyboard error")
+	}
+	return resp
+}
+
+func replyWithInlineKeyboard(chatId int, text string, keyboard *InlineKeyboard) *http.Response {
+	responseParams := map[string]string{"chat_id": fmt.Sprintf("%v", chatId)}
+	responseParams["text"] = text
+	keyboardJsoned, err := json.Marshal(keyboard)
+	fmt.Println(string(keyboardJsoned))
+	responseParams["reply_markup"] = string(keyboardJsoned)
+	resp, err := sendRequest(BOT_API, "sendMessage", responseParams)
+	if err != nil {
+		log.Println("replywithinlinekeyboard error")
+	}
+	return resp
+}
+
+func changeMessage(chatId int, msgId int, text string, keyboard *InlineKeyboard) *http.Response {
+	responseParams := map[string]string{"message_id": fmt.Sprintf("%v", msgId)}
+	responseParams["chat_id"] = fmt.Sprintf("%v", chatId)
+	responseParams["text"] = text
+	fmt.Println(responseParams)
+
+	keyboardJsoned, err := json.Marshal(keyboard)
+	fmt.Println(string(keyboardJsoned))
+	responseParams["reply_markup"] = string(keyboardJsoned)
+
+	resp, err := sendRequest(BOT_API, "editMessageText", responseParams)
+	if err != nil {
+		log.Println("replywithinlinekeyboard error")
+	}
+	return resp
+}
+
+func answerCallback(queryId string) *http.Response {
+	resp, err := sendRequest(BOT_API, "answerCallbackQuery", map[string]string{"callback_query_id": queryId})
+	if err != nil {
+		log.Println("err unmarshalling")
+	}
+	return resp
 }

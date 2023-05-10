@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -64,40 +65,137 @@ func handleEvent(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 	}
 
-	var botText BotMessage
-	err = json.Unmarshal(text, &botText)
-	username := botText.Message.From.Username
-	firstName := botText.Message.From.FirstName
-	// lastName := botText.Message.From.LastName
-	chatUser := botText.Message.From.Id
-	chatGroup := botText.Message.Chat.Id
-	messageId := botText.Message.MessageId
-	botCommand := botText.Message.Text
+	message := messageFromJson(text).Message
+	log.Println(message, "msg")
 
-	log.Printf("%s %d %d %d %s", username, chatUser, chatGroup, messageId, botCommand)
+	if message.Chat.Id == 0 && message.From.Id == 0 && message.From.Username == "" {
+		log.Println("callback incoming")
+		handleCallback(text)
+	} else {
+		handleCommand(message)
+	}
+}
 
-	responseParams := map[string]string{"chat_id": fmt.Sprintf("%v", chatUser)}
+func handleCommand(msg Message) {
+	username := msg.From.Username
+	chatId := msg.From.Id
+	chatGroup := msg.Chat.Id
+	messageId := msg.MessageId
+	botCommand := strings.ToLower(msg.Text)
 
-	switch botCommand {
+	log.Printf("uname: %s chatid:%d chatgroup:%d msgid:%d cmd:%s", username, chatId, chatGroup, messageId, botCommand)
+
+	firstName := msg.From.FirstName
+
+	switch strings.ToLower(msg.Text) {
 	case "привет":
-		log.Println("чувак написал привет")
-
-		responseParams["text"] = "привет, " + firstName + "!"
-
-		resp, err := sendRequest(BOT_API, "sendMessage", responseParams)
-		if err != nil {
-			log.Println(resp)
-		}
+		reply := "привет, " + firstName + "!"
+		resp := replyWithText(chatId, reply)
 		log.Println(statusAndDescription(resp))
 
+	case "/start":
+		reply := STARTUP_MESSAGE
+		kb := createWelcomeKeyboard()
+		resp := replyWithReplyKeyboard(chatId, reply, &kb)
+		log.Println(statusAndDescription(resp))
+	case "команды":
+		reply := COMMANDS
+		resp := replyWithText(chatId, reply)
+		log.Println(statusAndDescription(resp))
+	case "нуклеотиды":
+		reply := "Нажми на нуклеотид, о котором ты хочешь узнать подробнее.."
+		kb := createFirstLayerKeyboard()
+		resp := replyWithInlineKeyboard(chatId, reply, &kb)
+		log.Println(statusAndDescription(resp))
 	default:
-		log.Println("чувак написал несуществующую команду")
-
-		responseParams["text"] = "не понял..."
-		resp, err := sendRequest(BOT_API, "sendMessage", responseParams)
-		if err != nil {
-			log.Println(resp)
-		}
+		reply := "не понял..."
+		resp := replyWithText(chatId, reply)
 		log.Println(statusAndDescription(resp))
 	}
+}
+
+func handleCallback(text []byte) {
+	query := queryFromJson(text).CallbackQuery
+	log.Println(query, "query")
+
+	queryId := query.Id
+
+	callbackData := query.Data
+
+	chatId := query.Message.Chat.Id
+	msgId := query.Message.MessageId
+	fmt.Println(query.Message)
+	inlineMessageId := query.InlineMessageId
+	fmt.Println("INLMMESD", chatId, msgId, inlineMessageId)
+
+	switch callbackData {
+	case "layer1button1":
+		reply := LAYER1BUTTON1TEXT
+		kb := createSecondLayerKeyboard1()
+		resp := changeMessage(chatId, msgId, reply, &kb)
+		log.Println(statusAndDescription(resp))
+
+	case "layer1button2":
+		reply := LAYER1BUTTON2TEXT
+		kb := createSecondLayerKeyboard2()
+		resp := changeMessage(chatId, msgId, reply, &kb)
+		log.Println(statusAndDescription(resp))
+
+	case "layer1button3":
+		reply := LAYER1BUTTON3TEXT
+		kb := createSecondLayerKeyboard3()
+		resp := changeMessage(chatId, msgId, reply, &kb)
+		log.Println(statusAndDescription(resp))
+
+	case "layer1button4":
+		reply := LAYER1BUTTON4TEXT
+		kb := createSecondLayerKeyboard4()
+		resp := changeMessage(chatId, msgId, reply, &kb)
+		log.Println(statusAndDescription(resp))
+
+	case "layer1":
+		reply := "Нажми на нуклеотид, о котором ты хочешь узнать подробнее.."
+		kb := createFirstLayerKeyboard()
+		resp := changeMessage(chatId, msgId, reply, &kb)
+		log.Println(statusAndDescription(resp))
+
+	case "layer2adenin":
+		reply := ADENIN_WIKI
+		resp := replyWithText(chatId, reply)
+		log.Println(statusAndDescription(resp))
+	case "layer2guanin":
+		reply := GUANIN_WIKI
+		resp := replyWithText(chatId, reply)
+		log.Println(statusAndDescription(resp))
+	case "layer2timin":
+		reply := TIMIN_WIKI
+		resp := replyWithText(chatId, reply)
+		log.Println(statusAndDescription(resp))
+	case "layer2citozin":
+		reply := CITOZIN_WIKI
+		resp := replyWithText(chatId, reply)
+		log.Println(statusAndDescription(resp))
+
+	}
+	resp := answerCallback(queryId)
+	log.Println(statusAndDescription(resp))
+
+}
+
+func messageFromJson(text []byte) BotMessage {
+	var input BotMessage
+	err := json.Unmarshal(text, &input)
+	if err != nil {
+		log.Println("err unmarshalling")
+	}
+	return input
+}
+
+func queryFromJson(text []byte) BotQuery {
+	var input BotQuery
+	err := json.Unmarshal(text, &input)
+	if err != nil {
+		log.Println("err unmarshalling")
+	}
+	return input
 }
